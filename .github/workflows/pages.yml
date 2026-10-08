@@ -12,54 +12,7 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
-jobs:name: Nasazení textil.markmade.cz
-on:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '0 3 * * 1'   # každé pondělí ráno znovu stáhne ceny z katalogu
-  workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: true
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 150
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Nainstalovat puppeteer-core
-        run: npm install puppeteer-core --no-audit --no-fund
-      - name: Stáhnout data z online katalogu (cca 30–40 min)
-        run: node tools/scrape-all.js
-        env:
-          CHROME_PATH: /usr/bin/google-chrome
-      - name: Připravit raw.json
-        run: node tools/make-raw.js
-      - name: Vygenerovat web
-        run: BASE=https://textil.markmade.cz OUT=_site node build.js
-      - name: Zkontrolovat web
-        run: OUT=_site node validate.js
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
-
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 150
