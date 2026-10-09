@@ -30,7 +30,7 @@ jobs:
       - name: Připravit raw.json
         run: node tools/make-raw.js
       - name: Vygenerovat web
-        run: BASE=https://textil.markmade.cz OUT=_site node build.js
+        run: BASE=https://textil.markmade.cz OUT=_site node build.js && BASE=https://textil.markmade.cz OUT=_site node post-build.js
       - name: Zkontrolovat web
         run: OUT=_site node validate.js
       - uses: actions/upload-pages-artifact@v3
