@@ -56,7 +56,7 @@ const ex10 = price(1, 0) + price(1, 1);
 const faq = [
   ['Kolik stojí potisk jednoho místa na triku?', `Potisk 10 × 10 cm stojí od ${kc(small50)} za kus při 50 a více stejných potiscích, při 5–9 kusech ${kc(small5)}. Větší motiv A4 vychází na ${kc(a4_5)} při 5–9 kusech a motiv A3 na ${kc(a3_5)}. Ceny jsou bez DPH.`],
   ['Počítá se cena potisku podle počtu kusů, nebo podle počtu stejných potisků?', 'Podle počtu stejných potisků v celé zakázce. Pokud potisknete stejným logem 35 kusů různých modelů, použije se pásmo 20–49 ks. Každé místo potisku (hruď, záda, rukáv) se počítá zvlášť.'],
-  ['Je grafická příprava zdarma?', 'Ano, od 25 kusů s potiskem je příprava tiskových dat zdarma. U menších zakázek a při větší úpravě nebo překreslení loga se domluvíme na individuální ceně.'],
+  ['Kolik stojí grafická příprava?', 'Drobná grafická podpora je v ceně: logo zkontrolujeme, připravíme pro tisk a pošleme náhled ke schválení. Větší úpravy nebo překreslení loga naceníme předem.'],
   ['Od kolika kusů potisk děláte?', 'Od 5 kusů od každého modelu a barvy, velikosti lze libovolně kombinovat. Pro zakázky od 100 kusů připravíme individuální nabídku.'],
 ];
 const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -74,7 +74,7 @@ ${tab}
 <ul>
 <li><b>Textil:</b> cena modelu podle počtu kusů stejného modelu (viz katalog).</li>
 <li><b>Potisk:</b> cena za každé místo potisku zvlášť a podle počtu stejných potisků v celé zakázce.</li>
-<li><b>Grafika:</b> příprava tiskových dat je zdarma od 25 kusů s potiskem.</li>
+<li><b>Grafika:</b> drobná grafická podpora je v ceně (kontrola a příprava loga pro tisk, náhled ke schválení).</li>
 </ul>
 <h3>Příklad</h3>
 <p>10 triček s malým logem na hrudi (10 × 10 cm) a velkým logem na zádech (A4): potisk vychází na ${kc(price(1, 0))} + ${kc(price(1, 1))} = <b>${kc(ex10)} za kus</b> bez DPH, k tomu cena textilu. Celkem tedy například při textilu 79 Kč ${kc(79 + ex10)} za kus, ${kc((79 + ex10) * 10)} za 10 kusů bez DPH.</p>
@@ -104,7 +104,7 @@ const mainClose = idx.indexOf('</main>');
 let head = idx.slice(0, mainOpen);
 const tail = idx.slice(mainClose);
 const title = 'Ceník potisku textilu od 5 kusů – sítotisk, DTF, DTG | Markmade';
-const desc = `Ceník potisku textilu: potisk 10 × 10 cm od ${kc(small50)}, A4 od ${kc(price(pt.rows.length - 1, 1))}. Ceny podle počtu stejných potisků, grafika zdarma od 25 ks.`;
+const desc = `Ceník potisku textilu: potisk 10 × 10 cm od ${kc(small50)}, A4 od ${kc(price(pt.rows.length - 1, 1))}. Ceny podle počtu stejných potisků, drobná grafická podpora v ceně.`;
 const canonical = BASE + '/cenik-potisku/';
 head = head
   .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)

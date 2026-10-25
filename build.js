@@ -320,7 +320,7 @@ ${(placeList || printTable) ? `<h2>Ceník potisku</h2>
 ${placeList ? `<h3>Možná umístění</h3>${placeList}` : ''}
 ${printTable}` : `<h2>Potisk</h2>
 <p>Cenu potisku pro tento model potvrdíme v nezávazné nabídce. Potisk provádíme ve vlastní dílně od 5 kusů.</p>`}
-<p class="note">Grafická příprava tiskových dat je zdarma od 25 kusů s potiskem. Firmám (B2B) a objednávkám od 100 kusů potisk naceníme na míru.</p>
+<p class="note">Drobná grafická podpora je v ceně. Firmám (B2B) a objednávkám od 100 kusů potisk naceníme na míru.</p>
 
 <h2>Časté dotazy k ${esc(p.full)}</h2>
 <details><summary>Od kolika kusů ${esc(p.full)} s potiskem vyrobíte?</summary><p>Od 5 kusů od každého modelu a barvy. Velikosti můžete libovolně kombinovat.</p></details>
