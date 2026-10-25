@@ -1,7 +1,7 @@
 // Dodatečné zpracování hotového webu (spouští se po build.js):
 //  1) map.json – mapa "kód modelu" -> adresa stránky (používá skript v katalogu na markmade.cz)
 //  2) stránka /cenik-potisku/ (statický ceník potisku z dat katalogu)
-//  3) měření návštěv (Google Analytics) až po souhlasu s cookies – soubor analytics.js
+//  3) měření návštěv (společný skript mereni.js -> analytics.js)
 //  4) odkazy na ceník v menu a u produktů, záznam ceníku v sitemapě
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +9,6 @@ const path = require('path');
 const OUT = process.env.OUT || path.join(__dirname, 'out');
 const BASE = (process.env.BASE || 'https://textil.markmade.cz').replace(/\/$/, '');
 const MAIN = 'https://www.markmade.cz';
-const GA_ID = process.env.GA_ID || 'G-YJM27BHX89';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -120,34 +119,10 @@ fs.mkdirSync(path.join(OUT, 'cenik-potisku'), { recursive: true });
 fs.writeFileSync(path.join(OUT, 'cenik-potisku', 'index.html'), head + '<main class="wrap">\n' + body + '\n' + tail, 'utf8');
 console.log('cenik-potisku: vytvořeno');
 
-// ---------- 3) měření návštěv se souhlasem ----------
-const analytics = `(function () {
-  var ID = '${GA_ID}', K = 'mm_consent';
-  function load() {
-    if (window.__mmGa) return; window.__mmGa = true;
-    var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID; document.head.appendChild(s);
-    window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); };
-    gtag('js', new Date()); gtag('config', ID, { anonymize_ip: true });
-  }
-  var c = null; try { c = localStorage.getItem(K); } catch (e) {}
-  function footerLink() {
-    var p = document.querySelector('footer.site .wrap p:last-child'); if (!p || document.getElementById('mm-cookie-set')) return;
-    p.insertAdjacentHTML('beforeend', ' · <a href="#" id="mm-cookie-set">Nastavení cookies</a>');
-    document.getElementById('mm-cookie-set').addEventListener('click', function (e) { e.preventDefault(); try { localStorage.removeItem(K); } catch (x) {} location.reload(); });
-  }
-  function banner() {
-    var d = document.createElement('div'); d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Souhlas s cookies');
-    d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1a1a1a;color:#fff;padding:14px 16px;font:14px/1.5 system-ui,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.25)';
-    d.innerHTML = '<div style="max-width:1100px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 360px">Používáme analytické cookies (Google Analytics), abychom zjistili, jak web používáte a mohli jej zlepšovat. Bez vašeho souhlasu se nic neměří. <a href="${MAIN}/gdpr/" style="color:#fff;text-decoration:underline">Zásady ochrany osobních údajů</a></span><button id="mm-c-yes" style="background:#b4231a;color:#fff;border:0;border-radius:6px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer">Povolit</button><button id="mm-c-no" style="background:transparent;color:#fff;border:1px solid #fff;border-radius:6px;padding:9px 18px;font:inherit;cursor:pointer">Odmítnout</button></div>';
-    document.body.appendChild(d);
-    function set(v) { try { localStorage.setItem(K, v); } catch (e) {} d.remove(); if (v === 'yes') load(); }
-    document.getElementById('mm-c-yes').onclick = function () { set('yes'); };
-    document.getElementById('mm-c-no').onclick = function () { set('no'); };
-  }
-  function init() { footerLink(); if (c === 'yes') load(); else if (c !== 'no') banner(); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-})();
-`;
+// ---------- 3) měření: společný skript s www.markmade.cz (mereni.js, zdroj web-seo/new/mereni.js) ----------
+// GA4 v režimu souhlasu + Clarity, lišta souhlasu (volba sdílená s www přes cookie mm_consent), interní provoz,
+// contact_click, generate_lead. Soubor se zveřejní jako analytics.js, aby se nemusely měnit odkazy ve stránkách.
+const analytics = fs.readFileSync(path.join(__dirname, 'mereni.js'), 'utf8');
 fs.writeFileSync(path.join(OUT, 'analytics.js'), analytics, 'utf8');
 
 // ---------- 4) odkazy na ceník, měření, sitemapa ----------

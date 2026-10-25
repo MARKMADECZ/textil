@@ -206,7 +206,7 @@ ${(ld || []).map((j) => `<script type="application/ld+json">${JSON.stringify(j)}
 ${body}
 </main>
 <footer class="site"><div class="wrap">
-<p><b>Markmade s.r.o.</b> · IČO 23564695 · potisk textilu z vlastní tiskové výroby od 5 kusů · <a href="tel:+420608505181">+420 608 505 181</a> · <a href="mailto:info@markmade.cz">info@markmade.cz</a></p>
+<p><b>Mark made agency s.r.o.</b> · IČO 23564695 · potisk textilu z vlastní tiskové výroby od 5 kusů · <a href="tel:+420608505181">+420 608 505 181</a> · <a href="mailto:info@markmade.cz">info@markmade.cz</a></p>
 <p><a href="${MAIN}/">Hlavní web</a> · <a href="${MAIN}/onlinekatalog/">Online katalog</a> · <a href="${MAIN}/kontakt/">Poptávka</a> · <a href="${MAIN}/gdpr/">Ochrana osobních údajů</a></p>
 </div></footer>
 </body></html>`;
@@ -273,7 +273,7 @@ function productPage(p, all) {
       offers: t5 ? {
         '@type': 'AggregateOffer', priceCurrency: 'CZK', lowPrice: tMin, highPrice: t5.net, offerCount: t.length,
         availability: 'https://schema.org/InStock', url: p.url,
-        seller: { '@type': 'Organization', name: 'Markmade s.r.o.', url: MAIN + '/' },
+        seller: { '@type': 'Organization', name: 'Markmade', legalName: 'Mark made agency s.r.o.', url: MAIN + '/' },
       } : undefined,
     },
   ];
@@ -439,7 +439,7 @@ function write(rel, content) {
     title: 'Katalog textilu k potisku od 5 kusů | Markmade',
     desc: 'Trička, mikiny, polokošile, pracovní oděvy a čepice k potisku od 5 kusů. Ceny textilu i potisku u každého modelu, vlastní tisková výroba.',
     canonical: BASE + '/', ogImage: all[0].img,
-    ld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Markmade – katalog textilu k potisku', url: BASE + '/', publisher: { '@type': 'Organization', name: 'Markmade s.r.o.', url: MAIN + '/' } }],
+    ld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Markmade – katalog textilu k potisku', url: BASE + '/', publisher: { '@type': 'Organization', name: 'Markmade', legalName: 'Mark made agency s.r.o.', url: MAIN + '/' } }],
     body: `<h1>Katalog textilu k potisku od 5 kusů</h1>
 <p>Vyberte trička, mikiny, polokošile, bundy, čepice nebo pracovní oděvy – celkem ${all.length} modelů. U každého najdete parametry, barvy, ceny textilu podle množství a ceník potisku. Potisk provádíme ve vlastní dílně sítotiskem, DTF i DTG.</p>
 <p><a class="btn" href="${MAIN}/onlinekatalog/">Otevřít online katalog s filtry</a><a class="btn alt" href="${MAIN}/kontakt/">Nezávazná poptávka</a></p>
