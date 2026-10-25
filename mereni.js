@@ -30,6 +30,8 @@
       decided = true; mk = 'marketing' in acc; an = mk || 'performance' in acc;
       setCk('mm_consent', an ? 'yes' : 'no', 31536000);
     }
+    // Při souhlasu s marketingem Webnode výchozí stav souhlasu vůbec nepošle a GA pak hlásí 0 % souhlasu: doplníme ho výslovně
+    if (mk) gtag('consent', 'default', { ad_storage: 'granted', analytics_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted' });
     if (an && !mk) {
       // Webnode povolí analytiku jen spolu s marketingem; souhlas jen s analytickými cookies doplníme do výchozího stavu
       var push = w.dataLayer.push;
