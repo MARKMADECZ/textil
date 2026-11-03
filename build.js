@@ -24,6 +24,21 @@ const CATS = {
   'Doplňkový sortiment': mk('Doplňky', 'Doplňky s potiskem', 'doplnkovy-sortiment', 'doplňky', null),
   'Ostatní': mk('Ostatní textil', 'Ostatní textil s potiskem', 'ostatni', 'ostatní textil', null),
 };
+// odkazy z produktu na související stránky hlavního webu (podle kategorie a použití); ceník a technologie u všech
+const MAIN_LINKS = {
+  'Trička': [['firemni-tricka-s-logem', 'Firemní trička s logem'], ['merch-na-zakazku', 'Merch na zakázku'], ['tridni-mikiny-a-tricka', 'Třídní trička']],
+  'Mikiny': [['potisk-mikiny-na-zada', 'Potisk mikiny na záda'], ['mikina-s-vlastnim-napisem', 'Mikina s vlastním nápisem'], ['maturitni-mikiny', 'Maturitní mikiny']],
+  'Polokošile': [['firemni-tricka-s-logem', 'Firemní oblečení s logem']],
+  'Čepice': [['merch-na-zakazku', 'Merch na zakázku'], ['merch-na-akce-a-festivaly', 'Merch na akce a festivaly']],
+  'Tašky': [['firemni-merch', 'Firemní merch'], ['merch-na-akce-a-festivaly', 'Merch na akce a festivaly']],
+};
+const TAG_LINKS = { 'u:pra': ['pracovni-odevy-s-potiskem', 'Pracovní oděvy s potiskem'], 'u:spo': ['merch-pro-sportovni-kluby', 'Oblečení pro sportovní kluby'] };
+function mainLinks(p) {
+  const l = [...(MAIN_LINKS[p.cat] || []), ...(p.tags || []).map((t) => TAG_LINKS[t]).filter(Boolean),
+    ['cena-potisku-tricek', 'Ceník potisku'], ['rozdil-dtg-a-sitotisku', 'DTG, DTF, nebo sítotisk?']];
+  const seen = new Set();
+  return l.filter(([s]) => !seen.has(s) && seen.add(s)).map(([s, t]) => `<a href="${MAIN}/${s}/">${esc(t)}</a>`).join(' · ');
+}
 // tematické přehledy (jen odkazují na produkty, žádný duplicitní obsah)
 const HUBS = [
   { tag: 'u:pra', slug: 'pracovni-odevy', name: 'Pracovní oděvy', h1: 'Pracovní oděvy s potiskem a logem', main: MAIN + '/pracovni-odevy-s-potiskem/', catalog: MAIN + '/onlinekatalog/?pouziti=pracovni', intro: 'Pracovní trička, mikiny, bundy, kalhoty a vesty, které vydrží praní i provoz. Vyberte model a zjistěte cenu textilu i potisku loga od 5 kusů.' },
@@ -328,7 +343,8 @@ ${printTable}` : `<h2>Potisk</h2>
 <details><summary>Jsou ceny konečné?</summary><p>Ceny jsou orientační. Přesnou cenu včetně potisku a termínu potvrdíme v nezávazné nabídce, obvykle do 24 hodin.</p></details>
 
 ${related.length ? `<h2>Podobné modely</h2><ul class="cards">${related.map(card).join('')}</ul>` : ''}
-<p><a href="/${p.catSlug}/">Všechny modely: ${esc(c.noun)}</a>${c.main ? ` · <a href="${c.main}">Více o potisku: ${esc(c.noun)}</a>` : ''} · <a href="${c.catalog}">Celá kategorie v online katalogu</a></p>`;
+<p><a href="/${p.catSlug}/">Všechny modely: ${esc(c.noun)}</a>${c.main ? ` · <a href="${c.main}">Více o potisku: ${esc(c.noun)}</a>` : ''} · <a href="${c.catalog}">Celá kategorie v online katalogu</a></p>
+<p>Inspirace a rady: ${mainLinks(p)}</p>`;
 
   // FAQ ld
   ld.push({
