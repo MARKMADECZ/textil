@@ -11,10 +11,17 @@ const OUTF = path.join(__dirname, 'raw-all.jsonl');
 
 async function loadCatalog() {
   // Soubor s daty katalogu má v názvu hash, proto se jeho adresa čte přímo ze stránky katalogu
+  // Od 26. 10. 2026 je katalog stránkovaný ze serveru a stránka už na JSON neodkazuje – pak se soubor najde v repozitáři katalog-foto
   const html = await (await fetch('https://www.markmade.cz/onlinekatalog/')).text();
-  const m = html.match(/https:\/\/markmadecz\.github\.io\/katalog-foto\/data\/katalog-[0-9a-f]+\.json/);
-  if (!m) throw new Error('Adresa JSON katalogu nenalezena na stránce /onlinekatalog/');
-  const t = await (await fetch(m[0])).text();
+  let url = (html.match(/https:\/\/markmadecz\.github\.io\/katalog-foto\/data\/katalog-[0-9a-f]+\.json/) || [])[0];
+  if (!url) {
+    const ls = await (await fetch('https://api.github.com/repos/MARKMADECZ/katalog-foto/contents/data', { headers: { 'User-Agent': 'markmade-textil' } })).json();
+    const f = (Array.isArray(ls) ? ls : []).filter((x) => /^katalog-[0-9a-f]+\.json$/.test(x.name)).sort((a, b) => b.size - a.size)[0];
+    if (!f) throw new Error('JSON katalogu nenalezen ani na /onlinekatalog/, ani v katalog-foto/data');
+    url = 'https://markmadecz.github.io/katalog-foto/data/' + f.name;
+  }
+  console.log('data katalogu:', url);
+  const t = await (await fetch(url)).text();
   return JSON.parse(t.replace(/^\uFEFF/, '')).m;
 }
 
