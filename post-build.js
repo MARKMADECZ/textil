@@ -138,6 +138,6 @@ for (const f of walk(OUT).filter((x) => x.endsWith('.html'))) {
 }
 const smf = path.join(OUT, 'sitemap.xml');
 let sm = fs.readFileSync(smf, 'utf8');
-if (!sm.includes('/cenik-potisku/')) sm = sm.replace('</urlset>', `<url><loc>${BASE}/cenik-potisku/</loc><lastmod>${TODAY}</lastmod><priority>0.9</priority></url>\n</urlset>`);
+if (!sm.includes('/cenik-potisku/')) sm = sm.replace('</urlset>', `<url><loc>${BASE}/cenik-potisku/</loc><priority>0.9</priority></url>\n</urlset>`);
 fs.writeFileSync(smf, sm, 'utf8');
 console.log('upraveno stránek:', n, '; sitemapa doplněna o ceník');

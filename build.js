@@ -386,7 +386,7 @@ function write(rel, content) {
   const urls = [{ loc: BASE + '/', pri: '1.0' }];
 
   // produkty
-  for (const p of all) { write(p.path.slice(1) + 'index.html', productPage(p, all)); urls.push({ loc: p.url, pri: '0.8' }); }
+  for (const p of all) { write(p.path.slice(1) + 'index.html', productPage(p, all)); urls.push({ loc: p.url, pri: '0.8', img: p.img }); }
 
   // kategorie + značky
   for (const [key, c] of Object.entries(CATS)) {
@@ -449,7 +449,8 @@ function write(rel, content) {
   }));
 
   // sitemap, robots, 404
-  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `<url><loc>${u.loc}</loc><lastmod>${TODAY}</lastmod><priority>${u.pri}</priority></url>`).join('\n')}\n</urlset>\n`);
+  // bez lastmod: týdenní přegenerování by měnilo datum všem URL a Google by mu přestal věřit; produkty i s fotkou (image sitemap)
+  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.map((u) => `<url><loc>${u.loc}</loc>${u.img ? `<image:image><image:loc>${esc(u.img)}</image:loc></image:image>` : ''}<priority>${u.pri}</priority></url>`).join('\n')}\n</urlset>\n`);
   write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${BASE}/sitemap.xml\n`);
   write('404.html', layout({ title: 'Stránka nenalezena | Markmade', desc: 'Stránka nebyla nalezena.', canonical: BASE + '/', body: '<h1>Stránka nenalezena</h1><p><a href="/">Zpět do katalogu textilu</a></p>' }).replace('<meta name="robots" content="index,follow,max-image-preview:large">', '<meta name="robots" content="noindex">'));
 
