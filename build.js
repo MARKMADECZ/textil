@@ -15,12 +15,12 @@ const CATS = {
   'Mikiny': mk('Mikiny', 'Mikiny s potiskem', 'mikiny', 'mikiny', 'mikiny-s-potiskem'),
   'Polokošile': mk('Polokošile', 'Polokošile s potiskem', 'polokosile', 'polokošile', 'polokosile-s-potiskem'),
   'Čepice': mk('Čepice a kšiltovky', 'Čepice a kšiltovky s potiskem', 'cepice', 'čepice a kšiltovky', 'cepice-s-potiskem'),
-  'Bundy-vesty': mk('Bundy a vesty', 'Bundy a vesty s potiskem', 'bundy-vesty', 'bundy a vesty', null),
+  'Bundy-vesty': mk('Bundy a vesty', 'Bundy a vesty s potiskem', 'bundy-vesty', 'bundy a vesty', 'softshellove-bundy-s-potiskem'),
   'Fleece': mk('Fleece', 'Fleecové mikiny a bundy s potiskem', 'fleece', 'fleecové mikiny a bundy', null),
   'Kalhoty-šortky': mk('Kalhoty a šortky', 'Kalhoty a šortky s potiskem', 'kalhoty-sortky', 'kalhoty a šortky', null),
   'Košile': mk('Košile', 'Košile s potiskem', 'kosile', 'košile', null),
   'Froté': mk('Froté', 'Froté zboží s potiskem', 'frote', 'froté zboží', null),
-  'Tašky': mk('Tašky', 'Tašky s potiskem', 'tasky', 'tašky', null),
+  'Tašky': mk('Tašky', 'Tašky s potiskem', 'tasky', 'tašky', 'tasky-s-potiskem'),
   'Doplňkový sortiment': mk('Doplňky', 'Doplňky s potiskem', 'doplnkovy-sortiment', 'doplňky', null),
   'Ostatní': mk('Ostatní textil', 'Ostatní textil s potiskem', 'ostatni', 'ostatní textil', null),
 };
@@ -33,17 +33,65 @@ const MAIN_LINKS = {
   'Tašky': [['firemni-merch', 'Firemní merch'], ['merch-na-akce-a-festivaly', 'Merch na akce a festivaly']],
 };
 const TAG_LINKS = { 'u:pra': ['pracovni-odevy-s-potiskem', 'Pracovní oděvy s potiskem'], 'u:spo': ['merch-pro-sportovni-kluby', 'Oblečení pro sportovní kluby'] };
-function mainLinks(p) {
-  const l = [...(MAIN_LINKS[p.cat] || []), ...(p.tags || []).map((t) => TAG_LINKS[t]).filter(Boolean),
-    ['cena-potisku-tricek', 'Ceník potisku'], ['rozdil-dtg-a-sitotisku', 'DTG, DTF, nebo sítotisk?']];
+// stránky hlavního webu podle typu trička (4. 11. 2026) a podle značky
+const TEE_TAG_LINKS = { 'm:org': ['bio-tricka-s-potiskem', 'Bio trička s potiskem'], 'u:spo': ['sportovni-tricka-s-potiskem', 'Sportovní trička s potiskem'],
+  's:dr': ['tricka-s-dlouhym-rukavem-s-potiskem', 'Trička s dlouhým rukávem'], 's:br': ['tilka-s-potiskem', 'Tílka s potiskem'], 'u:det': ['detska-tricka-s-potiskem', 'Dětská trička s potiskem'] };
+const BRAND_PAGES = { 'Malfini': 'malfini-s-potiskem', 'Malfini Premium': 'malfini-s-potiskem', "SOL'S": 'sols-s-potiskem', 'James & Nicholson': 'james-nicholson-s-potiskem',
+  'B&C': 'b-c-s-potiskem', 'Fruit of the Loom': 'fruit-of-the-loom-s-potiskem', 'Build Your Brand': 'build-your-brand-s-potiskem' };
+const isOversize = (p) => /oversize|boxy/i.test(p.name + ' ' + p.sub);
+function relatedMain(p) {
+  const tags = p.tags || [];
+  const l = [];
+  if (p.cat === 'Trička') tags.forEach((t) => TEE_TAG_LINKS[t] && l.push(TEE_TAG_LINKS[t]));
+  if (/^(Trička|Mikiny)$/.test(p.cat) && isOversize(p)) l.push(['oversize-tricka-a-mikiny-s-potiskem', 'Oversize trička a mikiny']);
+  if (p.cat === 'Bundy-vesty' && /softshell/i.test(p.name + ' ' + p.sub)) l.push(['softshellove-bundy-s-potiskem', 'Softshellové bundy s potiskem']);
+  if (p.cat === 'Tašky') l.push(['tasky-s-potiskem', 'Tašky a batohy s potiskem']);
+  if (BRAND_PAGES[p.brand]) l.push([BRAND_PAGES[p.brand], `${p.brand} s potiskem`]);
+  l.push(...(MAIN_LINKS[p.cat] || []), ...tags.map((t) => TAG_LINKS[t]).filter(Boolean));
+  if (p.cat === 'Trička') l.push(['jaka-gramaz-tricka', 'Jakou gramáž zvolit'], ['jak-vybrat-velikost-tricka', 'Jak vybrat velikost']);
+  l.push(['cena-potisku-tricek', 'Ceník potisku'], ['rozdil-dtg-a-sitotisku', 'DTG, DTF, nebo sítotisk?'], ['co-je-dtf-tisk', 'Co je DTF tisk'], ['jak-prat-potistene-tricko', 'Jak prát potištěné tričko']);
   const seen = new Set();
-  return l.filter(([s]) => !seen.has(s) && seen.add(s)).map(([s, t]) => `<a href="${MAIN}/${s}/">${esc(t)}</a>`).join(' · ');
+  return l.filter(([s]) => !seen.has(s) && seen.add(s)).slice(0, 10);
+}
+function mainLinks(p) {
+  return relatedMain(p).map(([s, t]) => `<a href="${MAIN}/${s}/">${esc(t)}</a>`).join(' · ');
+}
+// ---------- doporučení potisku podle materiálu (DTG jen na 100% bavlnu) ----------
+const isCotton100 = (mat) => /100\s*%\s*(?:\p{L}+\s+){0,3}bavln/iu.test(mat || '') && !/polyester|elastan|viskóz|polyamid/i.test(mat || '');
+const isSynthetic = (mat) => /polyester|polyamid|elastan|softshell/i.test(mat || '');
+function techAdvice(p) {
+  const mat = p.spec['Materiál'] || '';
+  const avail = (p.x.techs || '').toLowerCase();
+  const ok = (t) => !avail || avail.includes(t.toLowerCase());
+  const c100 = isCotton100(mat);
+  const parts = [];
+  if (ok('sítotisk')) parts.push('sítotisk pro logo nebo jednodušší motiv ve větším počtu kusů');
+  if (ok('DTF')) parts.push(`DTF pro barevné motivy a detaily už od 5 kusů${isSynthetic(mat) ? ' – pružný potisk drží i na syntetických vláknech' : ''}`);
+  if (ok('DTG') && c100) parts.push('DTG pro fotky a jemné detaily s měkkým omakem');
+  if (!parts.length) return '';
+  const lead = c100 ? `${p.full} je ze 100% bavlny, takže se hodí pro všechny naše technologie` : mat ? `${p.full} je z materiálu ${lcFirst(mat.replace(/\s+/g, ' '))}${isSynthetic(mat) ? ', DTG proto nedoporučujeme (je určené jen pro 100% bavlnu)' : ''}` : `Pro ${p.full} doporučujeme`;
+  return `${lead}: ${parts.join(', ')}.`;
+}
+const USE = { 'u:fir': 'firemní a reprezentativní oblečení', 'u:pro': 'akce a reklamní kampaně', 'u:spo': 'sport a pohyb', 'u:out': 'ven a do nepohody', 'u:pra': 'pracovní provoz', 'u:det': 'děti, školy a kroužky' };
+function useSentence(p) {
+  const u = (p.tags || []).map((t) => USE[t]).filter(Boolean);
+  if (!u.length) return '';
+  return `V katalogu je model zařazený pro ${u.length > 1 ? u.slice(0, -1).join(', ') + ' a ' + u[u.length - 1] : u[0]}${(p.tags || []).includes('m:org') ? ' a je z organické bavlny' : ''}.`;
+}
+// podobné modely: stejná kategorie, co nejvíc společných vlastností (štítky), blízká gramáž; nejvýš 3 stejné značky
+function similar(p, all) {
+  const g = gramNum(p), tags = new Set(p.tags || []);
+  const sc = (x) => (x.tags || []).filter((t) => tags.has(t)).length * 100 - Math.abs(gramNum(x) - g) + (x.brand === p.brand ? 5 : 0);
+  const cand = all.filter((x) => x.id !== p.id && x.cat === p.cat && !x.weak).sort((a, b) => sc(b) - sc(a));
+  const out = [], per = {};
+  for (const x of cand) { if ((per[x.brand] || 0) >= 3) continue; per[x.brand] = (per[x.brand] || 0) + 1; out.push(x); if (out.length >= 6) break; }
+  return out;
 }
 // tematické přehledy (jen odkazují na produkty, žádný duplicitní obsah)
 const HUBS = [
   { tag: 'u:pra', slug: 'pracovni-odevy', name: 'Pracovní oděvy', h1: 'Pracovní oděvy s potiskem a logem', main: MAIN + '/pracovni-odevy-s-potiskem/', catalog: MAIN + '/onlinekatalog/?pouziti=pracovni', intro: 'Pracovní trička, mikiny, bundy, kalhoty a vesty, které vydrží praní i provoz. Vyberte model a zjistěte cenu textilu i potisku loga od 5 kusů.' },
-  { tag: 'u:spo', slug: 'sportovni-textil', name: 'Sportovní textil', h1: 'Sportovní a funkční textil s potiskem', main: null, catalog: MAIN + '/onlinekatalog/?pouziti=sport-a-funkcni', intro: 'Sportovní trička, funkční mikiny a týmové oblečení pro kluby, závody a akce. Potisk od 5 kusů z vlastní dílny.' },
-  { tag: 'u:det', slug: 'detsky-textil', name: 'Dětský textil', h1: 'Dětské oblečení s potiskem', main: null, catalog: MAIN + '/onlinekatalog/?pohlavi=detske', intro: 'Dětská trička, mikiny a čepice pro školy, školky, kroužky a rodiny. Potisk od 5 kusů, ceny hned u každého modelu.' },
+  { tag: 'u:spo', slug: 'sportovni-textil', name: 'Sportovní textil', h1: 'Sportovní a funkční textil s potiskem', main: MAIN + '/sportovni-tricka-s-potiskem/', catalog: MAIN + '/onlinekatalog/?pouziti=sport-a-funkcni', intro: 'Sportovní trička, funkční mikiny a týmové oblečení pro kluby, závody a akce. Potisk od 5 kusů z vlastní dílny.' },
+  { tag: 'u:det', slug: 'detsky-textil', name: 'Dětský textil', h1: 'Dětské oblečení s potiskem', main: MAIN + '/detska-tricka-s-potiskem/', catalog: MAIN + '/onlinekatalog/?pohlavi=detske', intro: 'Dětská trička, mikiny a čepice pro školy, školky, kroužky a rodiny. Potisk od 5 kusů, ceny hned u každého modelu.' },
 ];
 const PER_PAGE = 48;
 const USED_TITLES = new Set();
@@ -185,7 +233,7 @@ footer.site{margin-top:48px;border-top:1px solid var(--line);background:var(--so
 details{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0}summary{cursor:pointer;font-weight:600}
 `;
 
-function layout({ title, desc, canonical, body, ld, ogImage, ogType }) {
+function layout({ title, desc, canonical, body, ld, ogImage, ogType, robots }) {
   return `<!doctype html>
 <html lang="cs">
 <head>
@@ -194,7 +242,7 @@ function layout({ title, desc, canonical, body, ld, ogImage, ogType }) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${canonical}">
-<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="robots" content="${robots || 'index,follow,max-image-preview:large'}">
 <meta property="og:locale" content="cs_CZ">
 <meta property="og:type" content="${ogType || 'website'}">
 <meta property="og:site_name" content="Markmade">
@@ -265,8 +313,19 @@ function productPage(p, all) {
   const ex = exampleRows(p);
   const exHasBack = ex.length && ex[0].p2 != null;
   const a4i = p.x.print.cols.findIndex((c2) => /A4/.test(c2));
-  const related = [...all.filter((x) => x.id !== p.id && x.cat === p.cat && x.brand === p.brand), ...all.filter((x) => x.id !== p.id && x.cat === p.cat && x.brand !== p.brand)].slice(0, 6);
+  const related = similar(p, all);
   const imgs = [p.img, ...p.thumbs.slice(1).map((u) => u.replace('~w400', '~w800'))].filter(Boolean);
+  const advice = techAdvice(p);
+  const use = useSentence(p);
+  const exAt = (q) => ex.find((r) => r.q === q);
+  const priceFaq = exAt(10) && exAt(50) ? `Při 10 kusech vychází kus s potiskem na ${kc(exAt(10).per)}, při 50 kusech na ${kc(exAt(50).per)} bez DPH (textil v nejlevnější barvě, potisk ${p.x.print.cols[0] || 'loga'}${exHasBack ? ` a ${p.x.print.cols[a4i]} na zádech` : ''}). Přesnou cenu podle barvy a velikostí ukáže online katalog.` : '';
+  const faqs = [
+    [`Od kolika kusů ${p.full} s potiskem vyrobíte?`, 'Od 5 kusů od každého modelu a barvy. Velikosti můžete libovolně kombinovat.'],
+    [`Jaký potisk je na ${p.full} nejlepší?`, `${advice || (p.x.techs ? `Tento model je vhodný pro: ${p.x.techs}.` : '')} Nejvhodnější technologii doporučíme podle motivu a počtu kusů.`.trim()],
+    priceFaq ? [`Kolik stojí ${p.full} s potiskem?`, priceFaq] : null,
+    p.x.sizes ? [`V jakých velikostech je ${p.full}?`, `Ve velikostech ${p.x.sizes}. Velikosti stejného modelu a barvy se sčítají do minima 5 kusů.`] : null,
+    ['Jsou ceny konečné?', 'Ceny jsou orientační. Přesnou cenu včetně potisku a termínu potvrdíme v nezávazné nabídce, obvykle do 24 hodin.'],
+  ].filter(Boolean);
 
   const ld = [
     bc.ld,
@@ -281,9 +340,13 @@ function productPage(p, all) {
       image: imgs,
       description: p.ddesc.replace(/\s+/g, ' ').trim(),
       url: p.url,
+      ...(p.spec['Materiál'] ? { material: p.spec['Materiál'] } : {}),
+      ...(p.colors.length ? { color: p.colors.slice(0, 30).map((x) => x.name).join(', ') } : {}),
       additionalProperty: [
         g && GRAM_CATS.has(p.cat) ? { '@type': 'PropertyValue', name: 'Gramáž', value: g + ' g/m²' } : null,
         p.spec['Materiál'] ? { '@type': 'PropertyValue', name: 'Materiál', value: p.spec['Materiál'] } : null,
+        p.x.sizes ? { '@type': 'PropertyValue', name: 'Velikosti', value: p.x.sizes } : null,
+        p.x.techs ? { '@type': 'PropertyValue', name: 'Vhodné pro potisk', value: p.x.techs } : null,
       ].filter(Boolean),
       offers: t5 ? {
         '@type': 'AggregateOffer', priceCurrency: 'CZK', lowPrice: tMin, highPrice: t5.net, offerCount: t.length,
@@ -311,6 +374,7 @@ function productPage(p, all) {
 <p><span class="badge">${esc(p.brand)}</span><span class="badge">kód ${esc(p.id)}</span>${g && GRAM_CATS.has(p.cat) ? `<span class="badge">${g} g/m²</span>` : ''}<span class="badge">${p.colors.length} ${plural(p.colors.length, 'barva', 'barvy', 'barev')}</span></p>
 ${t5 ? `<p class="price">od ${kc(t5.net)} <small>za kus textilu bez DPH při odběru ${t5.from}–${t5.to} ks</small></p>` : ''}
 ${intro(p).map((s) => `<p>${esc(s)}</p>`).join('\n')}
+${use ? `<p>${esc(use)}</p>` : ''}
 <p><a class="btn" href="${p.catalogUrl}">Vybrat barvy a poptat v katalogu</a><a class="btn alt" href="${MAIN}/kontakt/">Nezávazná poptávka</a></p>
 <p class="note">Cena textilu je uvedena od nejlevnější barvy a platí za kus bez DPH a bez potisku. Přesnou cenu podle barvy a velikostí vidíte v online katalogu. Zakázky realizujeme od 5 kusů od každého modelu a barvy, velikosti lze kombinovat.</p>
 </div>
@@ -322,6 +386,9 @@ ${p.specp ? `<p>${esc(p.specp)}</p>` : ''}
 
 <h2>Dostupné barvy</h2>
 <ul class="sw">${sw}</ul>
+${advice ? `
+<h2>Jaký potisk zvolit</h2>
+<p>${esc(advice)} Nevíte si rady? Porovnejte <a href="${MAIN}/rozdil-dtg-a-sitotisku/">DTG, DTF a sítotisk</a> nebo nám napište.</p>` : ''}
 
 <h2>Cena textilu podle množství</h2>
 ${tiersTable}
@@ -338,22 +405,19 @@ ${printTable}` : `<h2>Potisk</h2>
 <p class="note">Drobná grafická podpora je v ceně. Firmám (B2B) a objednávkám od 100 kusů potisk naceníme na míru.</p>
 
 <h2>Časté dotazy k ${esc(p.full)}</h2>
-<details><summary>Od kolika kusů ${esc(p.full)} s potiskem vyrobíte?</summary><p>Od 5 kusů od každého modelu a barvy. Velikosti můžete libovolně kombinovat.</p></details>
-<details><summary>Jakou technologií bude potisk proveden?</summary><p>${p.x.techs ? `Tento model je vhodný pro: ${esc(p.x.techs)}.` : ''} Podle motivu, materiálu a počtu kusů doporučíme nejvhodnější z technologií sítotisk, DTF a DTG – viz <a href="${MAIN}/technologie-potisku/">technologie potisku</a>.</p></details>
-<details><summary>Jsou ceny konečné?</summary><p>Ceny jsou orientační. Přesnou cenu včetně potisku a termínu potvrdíme v nezávazné nabídce, obvykle do 24 hodin.</p></details>
+${faqs.map(([qq, a]) => `<details><summary>${esc(qq)}</summary><p>${esc(a)}</p></details>`).join('\n')}
 
 ${related.length ? `<h2>Podobné modely</h2><ul class="cards">${related.map(card).join('')}</ul>` : ''}
-<p><a href="/${p.catSlug}/">Všechny modely: ${esc(c.noun)}</a>${c.main ? ` · <a href="${c.main}">Více o potisku: ${esc(c.noun)}</a>` : ''} · <a href="${c.catalog}">Celá kategorie v online katalogu</a></p>
-<p>Inspirace a rady: ${mainLinks(p)}</p>`;
+<p><a href="/${p.catSlug}/">Všechny modely: ${esc(c.noun)}</a> · <a href="/${p.catSlug}/${p.brandSlug}/">${esc(c.name)} ${esc(p.brand)}</a>${c.main ? ` · <a href="${c.main}">Více o potisku: ${esc(c.noun)}</a>` : ''} · <a href="${c.catalog}">Celá kategorie v online katalogu</a></p>
+<h2>Inspirace a rady</h2>
+<p>${mainLinks(p)}</p>`;
 
-  // FAQ ld
+  // FAQ ld – stejné otázky jako na stránce
   ld.push({
-    '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [
-      { '@type': 'Question', name: `Od kolika kusů ${p.full} s potiskem vyrobíte?`, acceptedAnswer: { '@type': 'Answer', text: 'Od 5 kusů od každého modelu a barvy. Velikosti můžete libovolně kombinovat.' } },
-      { '@type': 'Question', name: 'Jsou ceny konečné?', acceptedAnswer: { '@type': 'Answer', text: 'Ceny jsou orientační. Přesnou cenu včetně potisku a termínu potvrdíme v nezávazné nabídce, obvykle do 24 hodin.' } },
-    ],
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: faqs.map(([qq, a]) => ({ '@type': 'Question', name: qq, acceptedAnswer: { '@type': 'Answer', text: a } })),
   });
-  return layout({ title, desc, canonical: p.url, body, ld, ogImage: p.img, ogType: 'website' });
+  return layout({ title, desc, canonical: p.url, body, ld, ogImage: p.img, ogType: 'website', robots: p.weak ? 'noindex,follow' : '' });
 }
 
 function listPage({ title, desc, canonical, h1, introHtml, crumbs, items, extraHtml, pagerHtml, offset }) {
@@ -393,8 +457,11 @@ function write(rel, content) {
 
 (function main() {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'raw.json'), 'utf8'));
-  const all = raw.map((r) => { const p = { ...r }; p.x = parse(r); slugs(p); return p; }).filter((p) => p.x.tiers.length);
-  console.log(`vstup ${raw.length} záznamů, ${all.length} s cenou textilu, ${all.filter((p) => !p.x.print.rows.length).length} bez ceníku potisku`);
+  const built = raw.map((r) => { const p = { ...r }; p.x = parse(r); slugs(p); return p; }).filter((p) => p.x.tiers.length);
+  // slabé stránky (bez fotky nebo bez barev): vygenerují se s noindex, ale nejsou v sitemapě ani ve výpisech
+  for (const p of built) p.weak = !p.img || !(p.colors || []).length;
+  const all = built.filter((p) => !p.weak);
+  console.log(`vstup ${raw.length} záznamů, ${built.length} s cenou textilu, ${built.length - all.length} slabých (noindex), ${all.filter((p) => !p.x.print.rows.length).length} bez ceníku potisku`);
   fs.rmSync(OUT, { recursive: true, force: true });
   write('style.css', CSS.trim());
   write('CNAME', BASE.replace(/^https?:\/\//, ''));
@@ -402,7 +469,7 @@ function write(rel, content) {
   const urls = [{ loc: BASE + '/', pri: '1.0' }];
 
   // produkty
-  for (const p of all) { write(p.path.slice(1) + 'index.html', productPage(p, all)); urls.push({ loc: p.url, pri: '0.8', img: p.img }); }
+  for (const p of built) { write(p.path.slice(1) + 'index.html', productPage(p, all)); if (!p.weak) urls.push({ loc: p.url, pri: '0.8', img: p.img }); }
 
   // kategorie + značky
   for (const [key, c] of Object.entries(CATS)) {
@@ -424,7 +491,7 @@ function write(rel, content) {
         title: [`${c.name} ${b} s potiskem od 5 kusů | Markmade`, `${c.name} ${b} s potiskem | Markmade`, `${c.name} ${b} | Markmade`].find((x) => x.length <= 62),
         desc: trunc(`${c.name} značky ${b} s potiskem od 5 kusů. ${bi.length} ${plural(bi.length, 'model', 'modely', 'modelů')}, ceny textilu i potisku hned. Sítotisk, DTF a DTG z vlastní dílny.`, 158),
         h1: `${c.name} ${b} s potiskem`,
-        introHtml: `<p>Nabízíme ${bi.length} ${plural(bi.length, 'model', 'modely', 'modelů')} značky ${esc(b)} v kategorii ${esc(c.name.toLowerCase())}. Vyberte si a zjistěte cenu textilu podle množství i cenu potisku.</p>`,
+        introHtml: `<p>Nabízíme ${bi.length} ${plural(bi.length, 'model', 'modely', 'modelů')} značky ${esc(b)} v kategorii ${esc(c.name.toLowerCase())}. Vyberte si a zjistěte cenu textilu podle množství i cenu potisku.</p>${BRAND_PAGES[b] ? `<p><a href="${MAIN}/${BRAND_PAGES[b]}/">Vše o textilu ${esc(b)} s potiskem</a>${c.main ? ` · <a href="${c.main}">Více o potisku: ${esc(c.noun)}</a>` : ''}</p>` : ''}`,
         crumbs: [{ name: 'Katalog textilu', url: BASE + '/' }, { name: c.name, url: `${BASE}/${c.slug}/` }, { name: b, url: `${BASE}/${c.slug}/${slugify(b)}/` }], items: bi,
       }, '0.7'));
     }
