@@ -19,7 +19,15 @@ for (const f of files) {
 }
 console.log('pages', files.length, 'ldBlocks', ldN, 'title>70', longT, 'desc>165', longD, 'desc<60', shortD);
 console.log('dup titles', Object.values(titles).filter((a) => a.length > 1).length, 'dup descs', Object.values(descs).filter((a) => a.length > 1).length);
-const sm = fs.readFileSync(path.join(OUT, 'sitemap.xml'), 'utf8'); const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+let sm = fs.readFileSync(path.join(OUT, 'sitemap.xml'), 'utf8');
+if (sm.includes('<sitemapindex')) {   // od 4. 11. 2026 index: projít jednotlivé soubory
+  const parts = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => path.join(OUT, new URL(m[1]).pathname));
+  const gone = parts.filter((f) => !fs.existsSync(f));
+  if (gone.length) { console.log('chybí soubor sitemapy', gone); process.exit(1); }
+  sm = parts.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+}
+const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+if (new Set(locs).size !== locs.length) { console.log('duplicitní URL v sitemapě'); process.exit(1); }
 const miss = locs.filter((u) => !fs.existsSync(path.join(OUT, new URL(u).pathname, 'index.html')));
 console.log('sitemap', locs.length, 'missing', miss.length, 'sitemap KB', Math.round(sm.length / 1024));
 const total = walk(OUT).reduce((a, f) => a + fs.statSync(f).size, 0);

@@ -533,7 +533,13 @@ function write(rel, content) {
 
   // sitemap, robots, 404
   // bez lastmod: týdenní přegenerování by měnilo datum všem URL a Google by mu přestal věřit; produkty i s fotkou (image sitemap)
-  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.map((u) => `<url><loc>${u.loc}</loc>${u.img ? `<image:image><image:loc>${esc(u.img)}</image:loc></image:image>` : ''}<priority>${u.pri}</priority></url>`).join('\n')}\n</urlset>\n`);
+  // od 4. 11. 2026 index se dvěma soubory (v Search Console je pak vidět indexace zvlášť pro přehledy a produkty);
+  // další strany stránkování (strana-N) v sitemapě nejsou – Google je najde z odkazů, sitemapa má nést jen hlavní stránky
+  const urlset = (list) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${list.map((u) => `<url><loc>${u.loc}</loc>${u.img ? `<image:image><image:loc>${esc(u.img)}</image:loc></image:image>` : ''}<priority>${u.pri}</priority></url>`).join('\n')}\n</urlset>\n`;
+  const main = urls.filter((u) => !/\/strana-\d+\/$/.test(u.loc));
+  write('sitemap-prehledy.xml', urlset(main.filter((u) => !u.img)));
+  write('sitemap-produkty.xml', urlset(main.filter((u) => u.img)));
+  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['sitemap-prehledy.xml', 'sitemap-produkty.xml'].map((f) => `<sitemap><loc>${BASE}/${f}</loc></sitemap>`).join('\n')}\n</sitemapindex>\n`);
   write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${BASE}/sitemap.xml\n`);
   write('404.html', layout({ title: 'Stránka nenalezena | Markmade', desc: 'Stránka nebyla nalezena.', canonical: BASE + '/', body: '<h1>Stránka nenalezena</h1><p><a href="/">Zpět do katalogu textilu</a></p>' }).replace('<meta name="robots" content="index,follow,max-image-preview:large">', '<meta name="robots" content="noindex">'));
 

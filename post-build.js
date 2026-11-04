@@ -136,7 +136,7 @@ for (const f of walk(OUT).filter((x) => x.endsWith('.html'))) {
   fs.writeFileSync(f, h, 'utf8');
   n++;
 }
-const smf = path.join(OUT, 'sitemap.xml');
+const smf = path.join(OUT, fs.existsSync(path.join(OUT, 'sitemap-prehledy.xml')) ? 'sitemap-prehledy.xml' : 'sitemap.xml');   // od 4. 11. 2026 index
 let sm = fs.readFileSync(smf, 'utf8');
 if (!sm.includes('/cenik-potisku/')) sm = sm.replace('</urlset>', `<url><loc>${BASE}/cenik-potisku/</loc><priority>0.9</priority></url>\n</urlset>`);
 fs.writeFileSync(smf, sm, 'utf8');
