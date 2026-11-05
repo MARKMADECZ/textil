@@ -9,8 +9,9 @@ GitHub Actions (`.github/workflows/pages.yml`) při každém pushi a **každé p
 
 1. `tools/scrape-all.js` otevře online katalog a přečte data všech modelů (cca 30–40 min),
 2. `tools/make-raw.js` je připraví pro generátor (při méně než 1500 modelech skončí chybou a web se nenasadí),
-3. `build.js` vygeneruje web, `validate.js` zkontroluje titulky, popisy, JSON-LD, odkazy a sitemapu,
-4. výsledek se nasadí na GitHub Pages.
+3. `tools/server-prices.js` stáhne ze serveru (console.markmade.cz) ceny textilu všech modelů – „od“ = nejlevnější objednatelná varianta (od 5. 11. 2026; detail katalogu ukazuje výchozí barvu, ne nejlevnější). Bez kompletních cen ze serveru build skončí chybou,
+4. `build.js` vygeneruje web (ceny textilu bere ze serveru), `validate.js` zkontroluje titulky, popisy, JSON-LD, odkazy a sitemapu,
+5. výsledek se nasadí na GitHub Pages.
 
 Ceny na webu se tím aktualizují samy podle katalogu.
 

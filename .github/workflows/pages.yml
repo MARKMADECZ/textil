@@ -29,8 +29,10 @@ jobs:
           CHROME_PATH: /usr/bin/google-chrome
       - name: Připravit raw.json
         run: node tools/make-raw.js
+      - name: Stáhnout ceny textilu ze serveru („od“ = nejlevnější objednatelná varianta)
+        run: node tools/server-prices.js
       - name: Vygenerovat web
-        run: BASE=https://textil.markmade.cz OUT=_site node build.js && BASE=https://textil.markmade.cz OUT=_site node post-build.js
+        run: REQUIRE_SERVER_PRICES=1 BASE=https://textil.markmade.cz OUT=_site node build.js && BASE=https://textil.markmade.cz OUT=_site node post-build.js
       - name: Zkontrolovat web
         run: OUT=_site node validate.js
       - uses: actions/upload-pages-artifact@v3

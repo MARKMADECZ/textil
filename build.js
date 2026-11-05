@@ -457,7 +457,24 @@ function write(rel, content) {
 
 (function main() {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'raw.json'), 'utf8'));
-  const built = raw.map((r) => { const p = { ...r }; p.x = parse(r); slugs(p); return p; }).filter((p) => p.x.tiers.length);
+  // Ceny textilu ze serveru (tools/server-prices.js): „od“ = nejlevnější objednatelná varianta, ne výchozí barva detailu.
+  const spFile = path.join(__dirname, 'server-prices.json');
+  const sp = fs.existsSync(spFile) ? JSON.parse(fs.readFileSync(spFile, 'utf8')) : null;
+  if (!sp && process.env.REQUIRE_SERVER_PRICES) throw new Error('Chybí server-prices.json');
+  let spUsed = 0;
+  const built = raw.map((r) => {
+    const p = { ...r }; p.x = parse(r); slugs(p);
+    const pk = sp && sp.models[p.id];
+    if (pk && p.x.tiers.length) {
+      for (const t of p.x.tiers) {
+        const k = sp.tiers.indexOf(t.from);
+        if (k >= 0 && pk[k] > 0) { t.net = pk[k]; t.gross = Math.ceil(pk[k] * 1.21 - 1e-9); }
+      }
+      spUsed++;
+    }
+    return p;
+  }).filter((p) => p.x.tiers.length);
+  if (sp) console.log(`ceny ze serveru (revize ${String(sp.revision).slice(0, 12)}): ${spUsed} modelů`);
   // slabé stránky (bez fotky nebo bez barev): vygenerují se s noindex, ale nejsou v sitemapě ani ve výpisech
   for (const p of built) p.weak = !p.img || !(p.colors || []).length;
   const all = built.filter((p) => !p.weak);
