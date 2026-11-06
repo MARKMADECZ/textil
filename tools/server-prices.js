@@ -6,7 +6,7 @@ const API = (process.env.CATALOG_API || 'https://console.markmade.cz/integration
 
 (async () => {
   const meta = await (await fetch(API)).json();
-  const out = { revision: meta.revision, tiers: meta.tiers, models: {} };
+  const out = { revision: meta.revision, tiers: meta.tiers, models: {}, ids: [], print: null };
   for (let offset = 0, more = true, guard = 0; more && guard < 200; guard++) {
     let page;
     for (let attempt = 0; attempt < 3 && !page; attempt++) {
@@ -17,6 +17,8 @@ const API = (process.env.CATALOG_API || 'https://console.markmade.cz/integration
       } catch (e) { if (attempt === 2) throw e; await new Promise((s) => setTimeout(s, 2000)); }
     }
     if (page.revision !== out.revision) throw new Error('Ceny se během stahování změnily – spusťte znovu.');
+    if (out.print == null) out.print = page.print || null;
+    for (const m of page.models) out.ids.push(m.i);
     for (const m of page.models) if (Array.isArray(m._pk) && m._pk.every((v) => v == null || v > 0)) out.models[m.i] = m._pk;
     offset += page.models.length; more = page.more && page.models.length > 0;
     out.total = page.total;

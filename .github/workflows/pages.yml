@@ -1,19 +1,60 @@
 name: Nasazení textil.markmade.cz
+# Od 6. 11. 2026 řídí web server: každých 15 minut se porovná otisk dat na console.markmade.cz s nasazeným webem
+# (build-state.json). Změna cen → přestavba z posledních stažených detailů (pár minut); nový/odebraný model nebo změna
+# ceníku potisku → plné stažení katalogu. V pondělí ráno, po pushi a ručním spuštění vždy plné stažení.
 on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 3 * * 1'   # každé pondělí ráno znovu stáhne ceny z katalogu
+    - cron: '*/15 * * * *'  # kontrola změn na serveru
+    - cron: '0 3 * * 1'     # pondělní plné obnovení (pojistka)
   workflow_dispatch:
+  repository_dispatch:
+    types: [catalog-changed]  # server může přestavbu vyvolat hned (volitelné, potřebuje token)
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false   # rozjeté sestavení se nepřeruší, další počká
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      mode: ${{ steps.decide.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Stáhnout ceny textilu ze serveru („od“ = nejlevnější objednatelná varianta)
+        run: node tools/server-prices.js || echo "::warning::Server s cenami teď neodpovídá."
+      - name: Porovnat s nasazeným webem
+        id: decide
+        run: |
+          if [ ! -f server-prices.json ]; then
+            # při pravidelné kontrole jen počkat na další (žádné chybové e-maily každých 15 min), jinak selhat
+            [ "${{ github.event.schedule }}" = '*/15 * * * *' ] && { echo "mode=none" >> "$GITHUB_OUTPUT"; exit 0; }
+            echo "::error::Bez cen ze serveru web nesestavím."; exit 1
+          fi
+          if [ "${{ github.event_name }}" = push ] || [ "${{ github.event_name }}" = workflow_dispatch ] || [ "${{ github.event.schedule }}" = '0 3 * * 1' ]; then
+            mode=full
+          else
+            mode=$(node tools/state.js https://textil.markmade.cz/build-state.json)
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Režim: $mode" >> "$GITHUB_STEP_SUMMARY"
+      - if: steps.decide.outputs.mode != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-prices
+          path: server-prices.json
+          retention-days: 1
   build:
+    needs: check
+    if: needs.check.outputs.mode != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -21,20 +62,40 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Ceny stažené při kontrole (sestaví se přesně z nich)
+        uses: actions/download-artifact@v4
+        with:
+          name: server-prices
+      - name: Poslední stažené detaily z katalogu
+        id: raw
+        if: needs.check.outputs.mode == 'prices'
+        uses: actions/cache/restore@v4
+        with:
+          path: tools/raw-all.jsonl
+          key: raw-all-none
+          restore-keys: raw-all-
       - name: Nainstalovat puppeteer-core
+        if: steps.raw.outputs.cache-matched-key == ''
         run: npm install puppeteer-core --no-audit --no-fund
       - name: Stáhnout data z online katalogu (cca 30–40 min)
-        run: node tools/scrape-all.js
+        if: steps.raw.outputs.cache-matched-key == ''
+        run: rm -f tools/raw-all.jsonl && node tools/scrape-all.js
         env:
           CHROME_PATH: /usr/bin/google-chrome
       - name: Připravit raw.json
         run: node tools/make-raw.js
-      - name: Stáhnout ceny textilu ze serveru („od“ = nejlevnější objednatelná varianta)
-        run: node tools/server-prices.js
       - name: Vygenerovat web
         run: REQUIRE_SERVER_PRICES=1 BASE=https://textil.markmade.cz OUT=_site node build.js && BASE=https://textil.markmade.cz OUT=_site node post-build.js
       - name: Zkontrolovat web
         run: OUT=_site node validate.js
+      - name: Otisk dat pro příští kontrolu
+        run: node tools/state.js > _site/build-state.json && cat _site/build-state.json
+      - name: Uložit stažené detaily pro rychlé přestavby
+        if: steps.raw.outputs.cache-matched-key == ''
+        uses: actions/cache/save@v4
+        with:
+          path: tools/raw-all.jsonl
+          key: raw-all-${{ github.run_id }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
