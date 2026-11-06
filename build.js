@@ -95,6 +95,7 @@ const HUBS = [
 ];
 const PER_PAGE = 48;
 const USED_TITLES = new Set();
+const DUP_NAMES = new Set();   // názvy Product, které má víc modelů (Malfini Classic 101 a 1E1…) → doplní se kód
 // kategorie, kde je gramáž smysluplný údaj pro výběr (u bund se uvádí gramáž svrchní látky, což klame)
 const GRAM_CATS = new Set(['Trička', 'Mikiny', 'Polokošile', 'Košile', 'Froté', 'Fleece']);
 
@@ -139,6 +140,18 @@ function parse(r) {
 
 const gramNum = (r) => parseInt((r.spec['Gramáž'] || '').match(/\d+/) || [0], 10);
 
+// Výprodejové modely Malfini, které katalog zařadil do doplňků, i když typ říká druh oděvu („Softshellová bunda dámská“, 5Y1).
+// Zdroj je opravený v katalog-malfini/build_katalog.py (category_of); tady pojistka, dokud se katalog nepřegeneruje (6. 11. 2026).
+const SUB_CAT = [['tričk', 'Trička'], ['polokošil', 'Polokošile'], ['mikin', 'Mikiny'], ['fleece', 'Fleece'], ['bund', 'Bundy-vesty'], ['vest', 'Bundy-vesty'],
+  ['kalhot', 'Kalhoty-šortky'], ['šortk', 'Kalhoty-šortky'], ['košil', 'Košile'], ['čepic', 'Čepice'], ['froté', 'Froté'], ['tašk', 'Tašky']];
+function fixCat(p) {
+  if (p.cat !== 'Doplňkový sortiment' || !/^Malfini/.test(p.brand || '')) return null;
+  const sub = (p.sub || '').toLowerCase();
+  const hit = SUB_CAT.find(([k]) => new RegExp('(^|\\s)' + k, 'u').test(sub));
+  return hit ? hit[1] : null;
+}
+const MOVED = [];   // [stará cesta, nová URL] → na staré adrese přesměrování
+
 function slugs(p) {
   if (!CATS[p.cat]) throw new Error('neznámá kategorie ' + p.cat + ' u ' + p.id);
   p.catSlug = CATS[p.cat].slug;
@@ -158,7 +171,7 @@ function intro(p) {
   const mat = (p.spec['Materiál'] || '').replace(/\s*%/g, ' %').replace(/\s+/g, ' ');
   const weight = g ? (g < 140 ? 'lehčím materiálům' : g < 175 ? 'středně silným materiálům' : g < 230 ? 'silnějším materiálům' : 'těžkým materiálům') : '';
   const bits = [];
-  bits.push(`${cap(p.type)} ${p.full} (kód ${p.id}) ${mat ? 'z materiálu ' + lcFirst(mat) : 'je vhodný textil k potisku'}${g ? ` s gramáží ${g} g/m²` : ''}${p.colors.length ? `, k dispozici v ${p.colors.length} ${plural(p.colors.length, 'barvě', 'barvách', 'barvách')}` : ''}${p.x.sizes ? ` a velikostech ${p.x.sizes}` : ''}.`);
+  bits.push(`${cap(p.type)} ${p.full} (kód ${p.id}) ${mat ? 'z materiálu ' + lcFirst(mat) : 'je vhodný textil k potisku'}${g ? ` s gramáží ${g} g/m²` : ''}${p.colors.length ? `, k dispozici ${vePred(p.colors.length)} ${p.colors.length} ${plural(p.colors.length, 'barvě', 'barvách', 'barvách')}` : ''}${p.x.sizes ? ` a velikostech ${p.x.sizes}` : ''}.`);
   const useMap = {
     'Trička': g < 160 ? 'Hodí se na akce, do kanceláře i jako týmové nebo reklamní tričko.' : 'Odolá častému praní, takže se hodí i na pracovní a každodenní nošení.',
     'Mikiny': 'Hodí se jako týmová, firemní nebo školní mikina na chladnější měsíce.',
@@ -171,7 +184,7 @@ function intro(p) {
   if (cat === 'Čepice') {
     bits.push('Hodí se na týmový merch, akce, firemní kolekce i dárkové balíčky.');
   } else if (weight && GRAM_CATS.has(cat)) {
-    bits.push(`Gramáž ${g} g/m² řadíme k ${weight}. ${useMap[cat] || ''}`.trim());
+    bits.push(`Gramáž ${g} g/m² řadíme ${/^st/.test(weight) ? 'ke' : 'k'} ${weight}. ${useMap[cat] || ''}`.trim());
   } else if (useMap[cat]) {
     bits.push(useMap[cat]);
   }
@@ -180,6 +193,8 @@ function intro(p) {
   return bits;
 }
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// „ve 2, ve 3, ve 4, ve 12–14, ve 20–49, ve 200–499 barvách“, jinak „v“ (6. 11. 2026)
+const vePred = (n) => (/^[234]/.test(String(n)) || (n >= 12 && n <= 14) ? 've' : 'v');
 const plural = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
 
 function printCols(p) { return p.x.print; }
@@ -289,15 +304,17 @@ const card = (p) => {
 function productPage(p, all) {
   const t = p.x.tiers;
   const t5 = t[0];
-  const tMin = t.reduce((m, x) => Math.min(m, x.net), Infinity);
+  const tMinGross = t.reduce((m, x) => Math.min(m, x.gross), Infinity);
   const printMin = p.x.print.rows.length ? Math.min(...p.x.print.rows.map((r) => r.vals[0])) : null;
+  // stejný název u víc modelů (Classic 101 / 1E1) → kód modelu hned za názvem, délka se hlídá i s kódem (6. 11. 2026)
+  const nm = DUP_NAMES.has(p.full + ' – ' + p.type) ? `${p.full} ${p.id}` : p.full;
   let title = [
-    `${cap(p.type)} ${p.full} s potiskem od 5 ks | Markmade`,
-    `${cap(p.type)} ${p.full} s potiskem | Markmade`,
-    `${cap(p.type)} ${p.full} | Markmade`,
-    `${p.full} s potiskem od 5 ks | Markmade`,
-    `${p.full} s potiskem | Markmade`,
-  ].find((x) => x.length <= 62) || `${p.full} | Markmade`;
+    `${cap(p.type)} ${nm} s potiskem od 5 ks | Markmade`,
+    `${cap(p.type)} ${nm} s potiskem | Markmade`,
+    `${cap(p.type)} ${nm} | Markmade`,
+    `${nm} s potiskem od 5 ks | Markmade`,
+    `${nm} s potiskem | Markmade`,
+  ].find((x) => x.length <= 62) || `${nm} | Markmade`;
   if (USED_TITLES.has(title)) title = title.replace(' | Markmade', ` ${p.id} | Markmade`);
   USED_TITLES.add(title);
   const g = gramNum(p);
@@ -332,13 +349,14 @@ function productPage(p, all) {
     {
       '@context': 'https://schema.org',
       '@type': 'Product',
-      name: `${p.full} – ${p.type}`,
+      name: `${p.full} – ${p.type}${DUP_NAMES.has(p.full + ' – ' + p.type) ? ` (kód ${p.id})` : ''}`,
       sku: p.id,
       mpn: p.id,
       brand: { '@type': 'Brand', name: p.brand },
       category: c.name,
       image: imgs,
-      description: p.ddesc.replace(/\s+/g, ' ').trim(),
+      // dodavatel popis většinou nedává → stejný text jako úvod stránky (Google bere popis produktu jako doporučené pole)
+      description: trunc(p.ddesc.replace(/\s+/g, ' ').trim() || [...intro(p), use].filter(Boolean).join(' '), 500),
       url: p.url,
       ...(p.spec['Materiál'] ? { material: p.spec['Materiál'] } : {}),
       ...(p.colors.length ? { color: p.colors.slice(0, 30).map((x) => x.name).join(', ') } : {}),
@@ -349,8 +367,10 @@ function productPage(p, all) {
         p.x.techs ? { '@type': 'PropertyValue', name: 'Vhodné pro potisk', value: p.x.techs } : null,
       ].filter(Boolean),
       offers: t5 ? {
-        '@type': 'AggregateOffer', priceCurrency: 'CZK', lowPrice: tMin, highPrice: t5.net, offerCount: t.length,
-        availability: 'https://schema.org/InStock', url: p.url,
+        // ceny s DPH (zákazník je v Googlu porovnává s DPH); obě hodnoty jsou vidět v tabulce „Cena textilu podle množství“
+        '@type': 'AggregateOffer', priceCurrency: 'CZK', lowPrice: tMinGross, highPrice: t5.gross, offerCount: t.length,
+        priceSpecification: { '@type': 'PriceSpecification', priceCurrency: 'CZK', minPrice: tMinGross, maxPrice: t5.gross, valueAddedTaxIncluded: true },
+        itemCondition: 'https://schema.org/NewCondition', availability: 'https://schema.org/InStock', url: p.url,
         seller: { '@type': 'Organization', name: 'Markmade', legalName: 'Mark made agency s.r.o.', url: MAIN + '/' },
       } : undefined,
     },
@@ -464,6 +484,8 @@ function write(rel, content) {
   let spUsed = 0;
   const built = raw.map((r) => {
     const p = { ...r }; p.x = parse(r); slugs(p);
+    const fc = fixCat(p);
+    if (fc) { const old = p.path; p.cat = fc; slugs(p); MOVED.push([old, p.url]); }
     const pk = sp && sp.models[p.id];
     if (pk && p.x.tiers.length) {
       for (const t of p.x.tiers) {
@@ -478,6 +500,9 @@ function write(rel, content) {
   // slabé stránky (bez fotky nebo bez barev): vygenerují se s noindex, ale nejsou v sitemapě ani ve výpisech
   for (const p of built) p.weak = !p.img || !(p.colors || []).length;
   const all = built.filter((p) => !p.weak);
+  const nameN = {};
+  for (const p of built) { const k = p.full + ' – ' + p.type; nameN[k] = (nameN[k] || 0) + 1; }
+  for (const k in nameN) if (nameN[k] > 1) DUP_NAMES.add(k);
   console.log(`vstup ${raw.length} záznamů, ${built.length} s cenou textilu, ${built.length - all.length} slabých (noindex), ${all.filter((p) => !p.x.print.rows.length).length} bez ceníku potisku`);
   fs.rmSync(OUT, { recursive: true, force: true });
   write('style.css', CSS.trim());
@@ -547,6 +572,10 @@ function write(rel, content) {
 <h2>Podle použití</h2>
 <p>${HUBS.filter((h) => h.n).map((h) => `<a class="badge" href="/${h.slug}/">${esc(h.name)} (${h.n})</a>`).join('')}</p>`,
   }));
+
+  // přesměrování z adres modelů přesunutých do správné kategorie (GitHub Pages neumí 301 → meta refresh + canonical, noindex)
+  for (const [old, url] of MOVED) write(old.slice(1) + 'index.html', `<!doctype html><html lang="cs"><head><meta charset="utf-8"><title>Přesunuto</title><link rel="canonical" href="${url}"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=${url}"></head><body><h1>Stránka se přesunula</h1><p><a href="${url}">Pokračovat na novou adresu</a></p></body></html>`);
+  if (MOVED.length) console.log('přesunuto do správné kategorie:', MOVED.map((m) => m[0] + ' → ' + m[1]).join(', '));
 
   // sitemap, robots, 404
   // bez lastmod: týdenní přegenerování by měnilo datum všem URL a Google by mu přestal věřit; produkty i s fotkou (image sitemap)

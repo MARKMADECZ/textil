@@ -13,7 +13,7 @@ for (const f of files) {
   if (d.length > 165) { longD++; probs.push('desc ' + d.length + ' ' + rel); }
   if (d.length < 60) { shortD++; probs.push('desc krátký ' + d.length + ' ' + rel); }
   (titles[t] = titles[t] || []).push(rel); (descs[d] = descs[d] || []).push(rel);
-  for (const m of h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) { try { JSON.parse(m[1]); ldN++; } catch (e) { probs.push('badLD ' + rel); } }
+  for (const m of h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) { try { const j = JSON.parse(m[1]); ldN++; if (j['@type'] === 'Product' && (!j.description || !j.offers || !j.offers.priceSpecification)) probs.push('badLD Product bez popisu/ceny ' + rel); } catch (e) { probs.push('badLD ' + rel); } }
   if ((h.match(/<h1/g) || []).length !== 1) probs.push('h1 count ' + rel);
   for (const m of h.matchAll(/href="(\/[^"#?]*)"/g)) { const p = m[1]; if (p === '/style.css') continue; const fp = path.join(OUT, p, p.endsWith('/') ? 'index.html' : ''); if (!fs.existsSync(fp)) probs.push('broken ' + p + ' in ' + rel); }
 }
