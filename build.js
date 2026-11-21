@@ -2,6 +2,7 @@
 // Vstup: raw.json (z scrape.js, data čtená přímo z online katalogu). Výstup: složka OUT.
 const fs = require('fs');
 const path = require('path');
+const { readServerPrices, printTable, applyPrintPrices } = require('./tools/print-prices');
 
 const BASE = (process.env.BASE || 'https://textil.markmade.cz').replace(/\/$/, '');
 const MAIN = 'https://www.markmade.cz';
@@ -379,7 +380,7 @@ function productPage(p, all) {
   const tiersTable = t.length ? `<table><thead><tr><th>Množství (stejný model)</th><th>Cena za kus bez DPH</th><th>Cena za kus s DPH</th></tr></thead><tbody>${t.map((x) => `<tr><td>${x.from}${x.to ? '–' + x.to : '+'} ks</td><td>${x.from_ ? 'od ' : ''}${kc(x.net)}</td><td>${x.from_ ? 'od ' : ''}${kc(x.gross)}</td></tr>`).join('')}<tr><td>100+ ks</td><td colspan="2">individuální nabídka</td></tr></tbody></table>` : '';
   const printTable = p.x.print.rows.length ? `<table><thead><tr><th>Počet stejných potisků</th>${p.x.print.cols.map((c2) => `<th>${esc(c2)}</th>`).join('')}</tr></thead><tbody>${p.x.print.rows.map((r) => `<tr><td>${r.range} ks</td>${r.vals.map((v) => `<td>${kc(v)}</td>`).join('')}</tr>`).join('')}<tr><td>100+ ks</td><td colspan="${p.x.print.cols.length}">individuální nabídka</td></tr></tbody></table>` : '';
   const exTable = ex.length ? `<table><thead><tr><th>Počet kusů</th><th>Textil</th><th>Potisk ${esc(p.x.print.cols[0] || '')}</th>${exHasBack ? `<th>Potisk ${esc(p.x.print.cols[a4i])}</th>` : ''}<th>Cena kusu</th><th>Celkem bez DPH</th></tr></thead><tbody>${ex.map((r) => `<tr><td>${r.q} ks</td><td>${kc(r.textil)}</td><td>${kc(r.p1)}</td>${exHasBack ? `<td>${kc(r.p2)}</td>` : ''}<td><b>${kc(r.per)}</b></td><td>${kc(r.total)}</td></tr>`).join('')}</tbody></table>` : '';
-  const placeList = p.x.placements.length ? `<ul>${p.x.placements.map((x) => `<li>${esc(x.name)} (${esc(x.size)}) – od ${kc(x.net)} bez DPH za kus</li>`).join('')}</ul>` : '';
+  const placeList = p.x.placements.length ? `<ul>${p.x.placements.map((x) => `<li>${esc(x.name)} (${esc(x.size)})${x.net == null ? '' : ` – od ${kc(x.net)} bez DPH za kus`}</li>`).join('')}</ul>` : '';
   const specs = Object.entries(p.spec).filter(([k]) => k !== 'Kód modelu').map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('') + `<dt>Kód modelu</dt><dd>${esc(p.id)}</dd>` + (p.x.sizes ? `<dt>Velikosti</dt><dd>${esc(p.x.sizes)}</dd>` : '') + (p.x.techs ? `<dt>Vhodné pro potisk</dt><dd>${esc(p.x.techs)}</dd>` : '');
   const sw = p.colors.map((x) => `<li><i style="background:${esc(x.bg)}"></i>${esc(x.name)}</li>`).join('');
 
@@ -478,12 +479,13 @@ function write(rel, content) {
 (function main() {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'raw.json'), 'utf8'));
   // Ceny textilu ze serveru (tools/server-prices.js): „od“ = nejlevnější objednatelná varianta, ne výchozí barva detailu.
-  const spFile = path.join(__dirname, 'server-prices.json');
-  const sp = fs.existsSync(spFile) ? JSON.parse(fs.readFileSync(spFile, 'utf8')) : null;
+  const sp = readServerPrices();
   if (!sp && process.env.REQUIRE_SERVER_PRICES) throw new Error('Chybí server-prices.json');
+  const serverPrint = sp ? printTable(sp.print) : null;
   let spUsed = 0;
   const built = raw.map((r) => {
     const p = { ...r }; p.x = parse(r); slugs(p);
+    if (serverPrint) applyPrintPrices(p.x, serverPrint);
     const fc = fixCat(p);
     if (fc) { const old = p.path; p.cat = fc; slugs(p); MOVED.push([old, p.url]); }
     const pk = sp && sp.models[p.id];

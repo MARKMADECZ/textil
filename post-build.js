@@ -5,6 +5,7 @@
 //  4) odkazy na ceník v menu a u produktů, záznam ceníku v sitemapě
 const fs = require('fs');
 const path = require('path');
+const { readServerPrices, printTable: serverPrintTable } = require('./tools/print-prices');
 
 const OUT = process.env.OUT || path.join(__dirname, 'out');
 const BASE = (process.env.BASE || 'https://textil.markmade.cz').replace(/\/$/, '');
@@ -27,7 +28,6 @@ fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(map), 'utf8');
 console.log('map.json:', Object.keys(map).length, 'modelů');
 
 // ---------- 2) Ceník potisku ----------
-const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'raw.json'), 'utf8'));
 function printTable(r) {
   const t = r.text.replace(/[   ]/g, ' ');
   const pi = t.indexOf('Počet kusů');
@@ -42,12 +42,16 @@ function printTable(r) {
   }
   return rows.length ? { cols, rows } : null;
 }
-let pt = null;
-for (const r of raw) { if (r.cat === 'Trička') { pt = printTable(r); if (pt && pt.cols.length === 3) break; } }
+const sp = readServerPrices();
+let pt = sp ? serverPrintTable(sp.print) : null;
+if (!pt) {
+  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'raw.json'), 'utf8'));
+  for (const r of raw) { if (r.cat === 'Trička') { pt = printTable(r); if (pt && pt.cols.length === 3) break; } }
+}
 if (!pt) throw new Error('Ceník potisku nenalezen v datech katalogu');
 const sizeName = (c) => (/A3/.test(c) ? 'A3 (28,5 × 42 cm)' : /A4/.test(c) ? 'A4 (21 × 28,5 cm)' : '10 × 10 cm');
 const vat = (n) => Math.round(n * 1.21);
-const tab = `<table><thead><tr><th>Počet stejných potisků</th>${pt.cols.map((c) => `<th>${esc(sizeName(c))}</th>`).join('')}</tr></thead><tbody>${pt.rows.map((r) => `<tr><td>${r.range} ks</td>${r.vals.map((v) => `<td>${kc(v)}<br><small>${kc(vat(v))} s DPH</small></td>`).join('')}</tr>`).join('')}<tr><td>100+ ks</td><td colspan="${pt.cols.length}">individuální nabídka</td></tr></tbody></table>`;
+const tab = `<table><thead><tr><th>Počet stejných potisků</th>${pt.cols.map((c) => `<th>${esc(sp ? c : sizeName(c))}</th>`).join('')}</tr></thead><tbody>${pt.rows.map((r) => `<tr><td>${r.range} ks</td>${r.vals.map((v) => `<td>${kc(v)}<br><small>${kc(vat(v))} s DPH</small></td>`).join('')}</tr>`).join('')}<tr><td>100+ ks</td><td colspan="${pt.cols.length}">individuální nabídka</td></tr></tbody></table>`;
 const price = (rowIdx, colIdx) => pt.rows[rowIdx].vals[colIdx];
 const small5 = price(0, 0), a4_5 = price(0, 1), a3_5 = price(0, 2);
 const small50 = price(pt.rows.length - 1, 0);
