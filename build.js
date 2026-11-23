@@ -33,7 +33,8 @@ const MAIN_LINKS = {
   'Čepice': [['merch-na-zakazku', 'Merch na zakázku'], ['merch-na-akce-a-festivaly', 'Merch na akce a festivaly']],
   'Tašky': [['firemni-merch', 'Firemní merch'], ['merch-na-akce-a-festivaly', 'Merch na akce a festivaly']],
 };
-const TAG_LINKS = { 'u:pra': ['pracovni-odevy-s-potiskem', 'Pracovní oděvy s potiskem'], 'u:spo': ['merch-pro-sportovni-kluby', 'Oblečení pro sportovní kluby'] };
+const TAG_LINKS = { 'u:pra': ['pracovni-odevy-s-potiskem', 'Pracovní oděvy s potiskem'], 'u:spo': ['merch-pro-sportovni-kluby', 'Oblečení pro sportovní kluby'],
+  'u:gas': ['zastery-s-potiskem', 'Zástěry s potiskem pro gastro'], 't:zas': ['zastery-s-potiskem', 'Zástěry s potiskem pro gastro'] };
 // stránky hlavního webu podle typu trička (4. 11. 2026) a podle značky
 const TEE_TAG_LINKS = { 'm:org': ['bio-tricka-s-potiskem', 'Bio trička s potiskem'], 'u:spo': ['sportovni-tricka-s-potiskem', 'Sportovní trička s potiskem'],
   's:dr': ['tricka-s-dlouhym-rukavem-s-potiskem', 'Trička s dlouhým rukávem'], 's:br': ['tilka-s-potiskem', 'Tílka s potiskem'], 'u:det': ['detska-tricka-s-potiskem', 'Dětská trička s potiskem'] };
