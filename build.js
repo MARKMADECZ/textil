@@ -25,6 +25,10 @@ const CATS = {
   'Doplňkový sortiment': mk('Doplňky', 'Doplňky s potiskem', 'doplnkovy-sortiment', 'doplňky', null),
   'Ostatní': mk('Ostatní textil', 'Ostatní textil s potiskem', 'ostatni', 'ostatní textil', null),
 };
+// CANIS (28. 11. 2026): netextilní kategorie katalogu se nepotiskují -> na textil.markmade.cz se negenerují (web je o potisku);
+// u CANIS se vynechají i modely bez potisku v textilních kategoriích (ponožky, prádlo, certifikované ochranné oděvy).
+const NO_PRINT_CATS = new Set(['Rukavice', 'Obuv', 'Ochranné pomůcky']);
+const isCanis = (id) => /^\d{4}-\d{3}$/.test(String(id || ''));
 // odkazy z produktu na související stránky hlavního webu (podle kategorie a použití); ceník a technologie u všech
 const MAIN_LINKS = {
   'Trička': [['firemni-tricka-s-logem', 'Firemní trička s logem'], ['merch-na-zakazku', 'Merch na zakázku'], ['tridni-mikiny-a-tricka', 'Třídní trička']],
@@ -484,7 +488,7 @@ function write(rel, content) {
   if (!sp && process.env.REQUIRE_SERVER_PRICES) throw new Error('Chybí server-prices.json');
   const serverPrint = sp ? printTable(sp.print) : null;
   let spUsed = 0;
-  const built = raw.map((r) => {
+  const built = raw.filter((r) => !NO_PRINT_CATS.has(r.cat)).map((r) => {
     const p = { ...r }; p.x = parse(r); slugs(p);
     if (serverPrint) applyPrintPrices(p.x, serverPrint);
     const fc = fixCat(p);
@@ -498,7 +502,7 @@ function write(rel, content) {
       spUsed++;
     }
     return p;
-  }).filter((p) => p.x.tiers.length);
+  }).filter((p) => p.x.tiers.length && !(isCanis(p.id) && !p.x.techs));
   if (sp) console.log(`ceny ze serveru (revize ${String(sp.revision).slice(0, 12)}): ${spUsed} modelů`);
   // slabé stránky (bez fotky nebo bez barev): vygenerují se s noindex, ale nejsou v sitemapě ani ve výpisech
   for (const p of built) p.weak = !p.img || !(p.colors || []).length;
